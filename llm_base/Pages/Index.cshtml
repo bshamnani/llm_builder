@@ -1,0 +1,172 @@
+﻿@page
+@model IndexModel
+@{
+    //var tableData = @Model.DataSet.RootElement.GetProperty("data");
+}
+
+
+<div class="text-center">
+    <h2>@Model.WelcomeMessage</h2>
+</div>
+<br />
+<div>
+    <form method="post">
+        <div class="mb-3">
+            <label class="form-label">User Query</label>
+            <textarea class="form-control" name="UserQuery" id="UserQuery" placeholder="Enter your query" required cols="20" rows="5">@Model.UserQuery</textarea>
+        </div>
+
+        <div class="input-group mb-3">
+            <select class="custom-select" id="TableName" name="TableName">
+                <option selected>Choose Table...</option>
+                <option value="TestRunDetails">tests</option>
+                <option value="DeploymentMetadata">deployments</option>
+                <option value="Sybase_Results">sybase</option>
+                <option value="SockPerf_Results">sockperf</option>
+                <option value="CassandraTestSummary">cassandra</option>
+                <option value="TestInfraMetadata">infra</option>
+            </select>
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary" asp-page-handler="OnPost">Execute Query</button>
+            </div>
+        </div>
+
+        <p>
+            <button class="btn btn-outline-secondary" type="button" data-toggle="collapse" data-target="#prompts" aria-expanded="false" aria-controls="promptsCollapse">Show Prompts</button>
+            <button class="btn btn-outline-secondary" type="button" data-toggle="collapse" data-target="#query" aria-expanded="false" aria-controls="queryCollapse">Show Query</button>
+        </p>
+        <div class="row">
+            <div class="col">
+                <div class="collapse multi-collapse" id="prompts">
+                    <div class="card card-body">
+                        <textarea readonly class="form-control" cols="20" id="Prompts" name="Prompts" rows="12">@Model.Prompts</textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="collapse multi-collapse" id="query">
+                    <div class="card card-body">
+                        <textarea readonly class="form-control" cols="20" id="KQLQuery" name="KQLQuery" rows="12">@Model.KQLQuery</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @if (Model.DataSet != null)
+        {
+            <div class="mb-3 table-responsive">
+                <table class="table table-dark table-striped table-sm table-hover">
+                    <thead>
+                        <tr>
+                            @foreach (var property in @Model.DataSet.RootElement.GetProperty("data")[0].EnumerateObject())
+                            {
+                                <th>@property.Name</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in @Model.DataSet.RootElement.GetProperty("data").EnumerateArray())
+                        {
+                            <tr>
+                                @foreach (var property in row.EnumerateObject())
+                                {
+                                    <td>@property.Value.ToString()</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+
+
+            <div class="md-3">
+                <p>
+                    <button class="btn btn-outline-primary" type="button" data-toggle="collapse" data-target="#chart" aria-expanded="false" aria-controls="chartCollapse">Show Chart</button>
+                </p>
+                @section Scripts {
+
+                <div class="container">
+                    <div class="collapse multi-collapse" id="chart">
+                        <canvas id="myChart"></canvas>
+
+                    </div>
+                    <!--<canvas id="line"></canvas>-->
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        var tableData = @Html.Raw(Json.Serialize(@Model.DataSet.RootElement.GetProperty("data")));
+                        var labels = Object.keys(tableData[0]);
+
+                        var dates = tableData.map(function (item) {
+                            return moment(item.Date, "YYYY-MM-DD").format("YYYY-MM-DD");
+                        });
+
+                        var logicalIODate = tableData.map(function (item) {
+                            //console.log(item);
+                            //console.log(item.keys)
+                            return {
+                                x: moment(item.Date, "YYYY-MM-DD").format("YYYY-MM-DD"),
+                                //y: item["Avg Logical IO"]
+                                y: item[Object.keys(item)[1]]
+                                //console.log()
+                            };
+                        });
+                        console.log(logicalIODate);
+                        var physicalIOData = tableData.map(function (item) {
+                            return {
+                                x: moment(item.Date, "YYYY-MM-DD").format("YYYY-MM-DD"),
+                                y: item["Avg Physical IO"]
+                            };
+                        });
+
+                        var ctx = document.getElementById('myChart').getContext('2d');
+                        var myChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: dates,
+                                datasets: [{
+                                    label: 'Average Logical IO',
+                                    data: logicalIODate,
+                                    backgroundColor: 'rgb(54, 162, 235)',
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: 'Average Physical IO',
+                                    data: logicalIODate,
+                                    backgroundColor: 'rgb(54, 162, 235)',
+                                    borderColor: 'rgb(178, 34, 34)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            parser: 'YYYY-MM-DD',
+                                            tooltipFormat: 'YYYY-MM-DD',
+                                            unit: 'day',
+                                            displayFormats: {
+                                                day: 'YYYY-MM-DD'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                </script>
+            }
+            </div>
+        }
+
+    </form>
+
+</div>
